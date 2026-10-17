@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">VOIDTOOLS</string>
+    <string name="title_activity_main">VOIDTOOLS</string>
+    <string name="package_name">com.voidtools.app</string>
+    <string name="custom_url_scheme">com.voidtools.app</string>
+</resources>
