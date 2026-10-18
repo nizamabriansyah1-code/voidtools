@@ -6,6 +6,7 @@ import QRCode from "qrcode";
 import { ArrowLeft, Copy, Download, RotateCcw, Sparkles, AlertCircle } from "lucide-react";
 import { tools } from "@/lib/tools";
 import { convertUnits, decodeBase64Utf8, encodeBase64Utf8, formatJson, generatePassword, generateUuidV4, getUuidVersion, secureRandomInt, sha256Hex, simulateLoot } from "@/lib/tool-logic";
+import { ExtraToolWorkspace } from "@/components/extra-tools";
 
 const rnd=secureRandomInt;
 const hexToRgb=(hex:string)=>{const h=hex.replace("#","");if(!/^[0-9a-f]{6}$/i.test(h))throw new Error("Enter a valid 6-digit HEX color, for example #8B5CF6.");return {r:parseInt(h.slice(0,2),16),g:parseInt(h.slice(2,4),16),b:parseInt(h.slice(4,6),16)}};
@@ -16,6 +17,11 @@ function luminance(hex:string){const {r,g,b}=hexToRgb(hex);const f=(v:number)=>{
 function contrast(a:string,b:string){const [x,y]=[luminance(a),luminance(b)].sort((m,n)=>n-m);return ((x+.05)/(y+.05)).toFixed(2)}
 
 export function ToolWorkspace({slug}:{slug:string}){
+ if(["json-diff","text-diff","jwt-decoder"].includes(slug)) return <ExtraToolWorkspace key={slug} slug={slug}/>;
+ return <LegacyToolWorkspace slug={slug}/>;
+}
+
+function LegacyToolWorkspace({slug}:{slug:string}){
  const tool=tools.find(t=>t.slug===slug);const [input,setInput]=useState("");const [result,setResult]=useState("");const [error,setError]=useState("");const [notice,setNotice]=useState("");const [busy,setBusy]=useState(false);const [favorites,setFavorites]=useState<string[]>([]);
  const [color,setColor]=useState("#8B5CF6"),[color2,setColor2]=useState("#22D3EE"),[count,setCount]=useState(5),[angle,setAngle]=useState(135),[useLower,setUseLower]=useState(true),[useUpper,setUseUpper]=useState(true),[useNums,setUseNums]=useState(true),[useSymbols,setUseSymbols]=useState(false),[passLen,setPassLen]=useState(20),[prob,setProb]=useState(10),[trials,setTrials]=useState(1000),[seed,setSeed]=useState("void"),[filePreview,setFilePreview]=useState(""),[imageData,setImageData]=useState<string|undefined>(),[qrData,setQrData]=useState("");
  const [rankBold,setRankBold]=useState(false),[rankItalic,setRankItalic]=useState(false);

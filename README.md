@@ -2,7 +2,7 @@
 
 **ALL YOUR TOOLS. ONE VOID.**
 
-A privacy-minded collection of 20 browser-side utilities for developers, Minecraft server owners, and creative work.
+A privacy-minded collection of 23 browser-side utilities for developers, Minecraft server owners, and creative work.
 
 ## Run locally
 
@@ -51,7 +51,7 @@ npm ci
 npm run windows:exe
 ```
 
-The app is written to `outputs/windows-build/VOIDTOOLS-Windows-1.0.0.exe`.
+The app is written to `outputs/windows-build/VOIDTOOLS-Windows-1.1.0.exe`.
 
 ## GitHub Pages and app releases
 

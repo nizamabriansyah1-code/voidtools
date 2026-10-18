@@ -7,7 +7,7 @@ const releaseUrl = repository ? `https://github.com/${repository}/releases/lates
 const platforms = [
   {
     name: "Android",
-    detail: "APK · Version 1.0.0",
+    detail: "APK · Version 1.1.0",
     description: "Install VOIDTOOLS on your Android phone. Your utilities work on-device, without an account.",
     icon: Smartphone,
     href: `${releaseUrl}VOIDTOOLS-android.apk`,
@@ -18,7 +18,7 @@ const platforms = [
   },
   {
     name: "Windows",
-    detail: "Portable EXE · Version 1.0.0",
+    detail: "Portable EXE · Version 1.1.0",
     description: "Run VOIDTOOLS on a Windows PC. No installer or Vercel account required.",
     icon: Monitor,
     href: `${releaseUrl}VOIDTOOLS-Windows.exe`,

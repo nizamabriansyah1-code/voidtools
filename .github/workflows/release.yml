@@ -41,7 +41,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force release-assets | Out-Null
           Copy-Item android/app/build/outputs/apk/debug/app-debug.apk release-assets/VOIDTOOLS-android.apk
-          Copy-Item outputs/windows-build/VOIDTOOLS-Windows-1.0.0.exe release-assets/VOIDTOOLS-Windows.exe
+          $exe = Get-ChildItem outputs/windows-build/VOIDTOOLS-Windows-*.exe | Select-Object -First 1
+          if (-not $exe) { throw "Windows portable build was not found." }
+          Copy-Item $exe.FullName release-assets/VOIDTOOLS-Windows.exe
 
       - name: Publish GitHub release
         shell: pwsh

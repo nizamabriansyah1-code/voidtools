@@ -1,11 +1,38 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { convertUnits, decodeBase64Utf8, encodeBase64Utf8, formatJson, generatePassword, getUuidVersion, secureRandomInt, sha256Hex, simulateLoot } from "../lib/tool-logic.ts";
+import { convertUnits, decodeBase64Utf8, decodeJwtPayload, diffJsonText, diffTextLines, encodeBase64Utf8, formatJson, generatePassword, getUuidVersion, secureRandomInt, sha256Hex, simulateLoot } from "../lib/tool-logic.ts";
 
 test("JSON formatter preserves values and rejects invalid input", () => {
   assert.equal(formatJson('{"hello":"void","ok":true}'), '{\n  "hello": "void",\n  "ok": true\n}');
   assert.throws(() => formatJson("{"), SyntaxError);
   assert.throws(() => formatJson("  "), /Paste JSON/);
+});
+
+test("JSON diff ignores object key order and reports nested changes with escaped paths", () => {
+  assert.equal(diffJsonText('{"b":2,"a":{"x/y":1}}', '{"a":{"x/y":3},"b":2}'), '~ $/a/x~1y: 1 → 3');
+  assert.equal(diffJsonText('{"a":1}', '{"a":1}'), "No differences found.");
+  assert.match(diffJsonText('{"a":1}', '{"a":1,"b":2}'), /\+ \$\/b: 2/);
+  assert.match(diffJsonText('{"a":1,"b":2}', '{"a":1}'), /- \$\/b: 2/);
+  assert.throws(() => diffJsonText("{", "{}"), /Original JSON is invalid/);
+  assert.throws(() => diffJsonText("{}", "{"), /Updated JSON is invalid/);
+});
+
+test("text diff handles replacements and empty sides without fake blank lines", () => {
+  assert.equal(diffTextLines("keep\nold", "keep\nnew"), "  keep\n- old\n+ new");
+  assert.equal(diffTextLines("gone", ""), "- gone");
+  assert.equal(diffTextLines("", "added"), "+ added");
+  assert.throws(() => diffTextLines("", ""), /at least one/);
+});
+
+test("JWT decoder reads Base64URL JSON locally and clearly says signature is unverified", () => {
+  const encode = value => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const decoded = decodeJwtPayload(`${encode({ alg: "none" })}.${encode({ sub: "user-1" })}.signature`);
+  assert.match(decoded, /"sub": "user-1"/);
+  assert.match(decoded, /Signature: present, not verified/);
+  assert.match(decodeJwtPayload(`${encode({ alg: "none" })}.${encode({})}.`), /Signature: empty, not verified/);
+  assert.throws(() => decodeJwtPayload("not-a-jwt"), /compact JWT/);
+  assert.throws(() => decodeJwtPayload("e30.e30.bad+sig"), /invalid Base64URL signature/);
+  assert.throws(() => decodeJwtPayload("e30.%%%.."), /compact JWT/);
 });
 
 test("Base64 round-trips Unicode without corrupting multi-byte characters", () => {

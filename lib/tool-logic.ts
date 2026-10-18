@@ -23,6 +23,99 @@ export function formatJson(input: string): string {
   return JSON.stringify(JSON.parse(input), null, 2);
 }
 
+export function diffJsonText(left: string, right: string): string {
+  if (!left.trim() || !right.trim()) throw new Error("Paste JSON into both panels to compare.");
+  let before: unknown;
+  let after: unknown;
+  try { before = JSON.parse(left); } catch (cause) { throw new Error(`Original JSON is invalid: ${cause instanceof Error ? cause.message : "parse error"}`); }
+  try { after = JSON.parse(right); } catch (cause) { throw new Error(`Updated JSON is invalid: ${cause instanceof Error ? cause.message : "parse error"}`); }
+  const changes: string[] = [];
+
+  const visit = (a: unknown, b: unknown, path: string, depth = 0): void => {
+    if (depth > 100) throw new RangeError("JSON nesting is too deep to compare (maximum 100 levels).");
+    if (Object.is(a, b)) return;
+    if (Array.isArray(a) && Array.isArray(b)) {
+      const length = Math.max(a.length, b.length);
+      for (let index = 0; index < length; index++) {
+        const itemPath = `${path}[${index}]`;
+        if (index >= a.length) changes.push(`+ ${itemPath}: ${JSON.stringify(b[index])}`);
+        else if (index >= b.length) changes.push(`- ${itemPath}: ${JSON.stringify(a[index])}`);
+        else visit(a[index], b[index], itemPath, depth + 1);
+      }
+      return;
+    }
+    if (isJsonObject(a) && isJsonObject(b)) {
+      const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort();
+      for (const key of keys) {
+        const itemPath = `${path}/${key.replace(/~/g, "~0").replace(/\//g, "~1")}`;
+        if (!Object.prototype.hasOwnProperty.call(a, key)) changes.push(`+ ${itemPath}: ${JSON.stringify(b[key])}`);
+        else if (!Object.prototype.hasOwnProperty.call(b, key)) changes.push(`- ${itemPath}: ${JSON.stringify(a[key])}`);
+        else visit(a[key], b[key], itemPath, depth + 1);
+      }
+      return;
+    }
+    changes.push(`~ ${path}: ${JSON.stringify(a)} → ${JSON.stringify(b)}`);
+  };
+
+  visit(before, after, "$");
+  return changes.length ? changes.join("\n") : "No differences found.";
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function diffTextLines(left: string, right: string): string {
+  if (!left && !right) throw new Error("Enter text in at least one panel to compare.");
+  const before = left ? left.split(/\r?\n/) : [];
+  const after = right ? right.split(/\r?\n/) : [];
+  if (before.length * after.length > 1_000_000) throw new RangeError("Compare up to 1,000 lines per panel at a time.");
+
+  const lcs = Array.from({ length: before.length + 1 }, () => new Uint32Array(after.length + 1));
+  for (let i = before.length - 1; i >= 0; i--) {
+    for (let j = after.length - 1; j >= 0; j--) {
+      lcs[i][j] = before[i] === after[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    }
+  }
+
+  const diff: string[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < before.length && j < after.length) {
+    if (before[i] === after[j]) {
+      diff.push(`  ${before[i]}`);
+      i++;
+      j++;
+    } else if (lcs[i + 1][j] >= lcs[i][j + 1]) diff.push(`- ${before[i++]}`);
+    else diff.push(`+ ${after[j++]}`);
+  }
+  while (i < before.length) diff.push(`- ${before[i++]}`);
+  while (j < after.length) diff.push(`+ ${after[j++]}`);
+  return diff.join("\n");
+}
+
+export function decodeJwtPayload(token: string): string {
+  const parts = token.trim().split(".");
+  if (parts.length !== 3 || !parts[0] || !parts[1]) throw new Error("Enter a compact JWT with header, payload, and signature sections.");
+  if (token.length > 256_000) throw new RangeError("JWT is too large to decode here (maximum 256 KB).");
+  if (parts[2] && !/^[A-Za-z0-9_-]+$/.test(parts[2])) throw new Error("JWT contains an invalid Base64URL signature section.");
+
+  const decodeSegment = (segment: string): unknown => {
+    if (!/^[A-Za-z0-9_-]+$/.test(segment)) throw new Error("JWT contains an invalid Base64URL section.");
+    const base64 = segment.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - base64.length % 4) % 4);
+    const bytes = Uint8Array.from(atob(padded), char => char.charCodeAt(0));
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return JSON.parse(text) as unknown;
+  };
+
+  const header = decodeSegment(parts[0]);
+  const payload = decodeSegment(parts[1]);
+  if (!isJsonObject(header)) throw new Error("The JWT header must decode to a JSON object.");
+  if (!isJsonObject(payload)) throw new Error("The JWT payload must decode to a JSON object.");
+  return `Header\n${JSON.stringify(header, null, 2)}\n\nPayload\n${JSON.stringify(payload, null, 2)}\n\nSignature: ${parts[2] ? "present, not verified" : "empty, not verified"}`;
+}
+
 export function encodeBase64Utf8(input: string): string {
   const bytes = new TextEncoder().encode(input);
   let binary = "";
